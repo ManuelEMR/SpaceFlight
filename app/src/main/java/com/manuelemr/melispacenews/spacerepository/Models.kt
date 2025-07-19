@@ -11,7 +11,8 @@ data class Article(
     val url: String,
     @SerialName("image_url")val imageUrl: String? = null,
     val summary: String? = null,
-    @SerialName("published_at") val publishedAt: String? = null
+    @SerialName("published_at") val publishedAt: String? = null,
+    @SerialName("news_site") val newsSite: String? = null,
 )
 
 @Serializable

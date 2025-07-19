@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">MeliSpaceNews</string>
+    <string name="search_space_flight_news_title">Space Flight News</string>
+    <string name="search_article_image_description">An Article Image</string>
 </resources>
