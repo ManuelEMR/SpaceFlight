@@ -101,7 +101,7 @@ fun ArticleRow(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                article.publishedAt?.let {
+                article.publishedAtFormatted?.let {
                     Text(
                         text = it,
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),

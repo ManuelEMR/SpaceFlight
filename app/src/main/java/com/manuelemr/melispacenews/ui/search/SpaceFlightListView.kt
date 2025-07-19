@@ -1,5 +1,6 @@
 package com.manuelemr.melispacenews.ui.search
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
@@ -54,8 +55,11 @@ fun SpaceFlightView(
     }
 }
 
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview
 @Composable
 private fun SpaceFlightViewPreview() {
-    SpaceFlightView()
+    SpaceFlightView(
+        viewModel = SpaceFlightListViewModelMock()
+    )
 }

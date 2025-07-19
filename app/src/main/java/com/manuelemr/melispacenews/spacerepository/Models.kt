@@ -4,6 +4,8 @@ import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /** Data Classes **/
 @Parcelize
@@ -16,7 +18,10 @@ data class Article(
     val summary: String? = null,
     @SerialName("published_at") val publishedAt: String? = null,
     @SerialName("news_site") val newsSite: String? = null,
-): Parcelable
+): Parcelable {
+    val publishedAtFormatted: String?
+        get() = publishedAt?.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss", Locale.getDefault()))
+}
 
 @Serializable
 data class ArticleResponse(

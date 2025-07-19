@@ -1,16 +1,22 @@
 package com.manuelemr.melispacenews.spacerepository
 
-class SpaceFlightRepository(private val api: SpaceFlightApi) {
+open class SpaceFlightRepository(protected val api: SpaceFlightApi) {
     private val pageSize = 20
 
-    suspend fun searchArticles(search: String? = null, page: Int = 0): List<Article> {
+    open suspend fun searchArticles(search: String? = null, page: Int = 0): List<Article> {
         return api.searchArticles(
             offset = page * pageSize,
             search = search
         ).results
     }
 
-    suspend fun getArticleById(id: Int): Article {
+    open suspend fun getArticleById(id: Int): Article {
         return api.getArticleById(id)
+    }
+}
+
+class SpaceFlightRepositoryStub: SpaceFlightRepository(SpaceFlightApiStub()) {
+    override suspend fun searchArticles(search: String?, page: Int): List<Article> {
+        return api.searchArticles(offset = 0, search = search).results
     }
 }

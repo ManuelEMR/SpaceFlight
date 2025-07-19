@@ -4,7 +4,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.manuelemr.melispacenews.spacerepository.Article
+import com.manuelemr.melispacenews.spacerepository.SpaceFlightApiStub
 import com.manuelemr.melispacenews.spacerepository.SpaceFlightRepository
+import com.manuelemr.melispacenews.spacerepository.SpaceFlightRepositoryStub
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -14,11 +16,11 @@ data class SpaceFlightViewState(
     val searchQuery: String = ""
 )
 
-class SpaceFlightListViewModel(
+open class SpaceFlightListViewModel(
     private val spaceFlightRepository: SpaceFlightRepository
 ): ViewModel() {
 
-    private val _viewState = MutableStateFlow(SpaceFlightViewState())
+    protected val _viewState = MutableStateFlow(SpaceFlightViewState())
     val viewState: StateFlow<SpaceFlightViewState> = _viewState
 
     fun fetchArticles() {
@@ -31,5 +33,13 @@ class SpaceFlightListViewModel(
                 Log.e("SpaceFlightListViewModel", "Error fetching articles", e)
             }
         }
+    }
+}
+
+
+
+class SpaceFlightListViewModelMock: SpaceFlightListViewModel(SpaceFlightRepositoryStub()) {
+    init {
+        _viewState.value = SpaceFlightViewState(articles = SpaceFlightApiStub.testArticles)
     }
 }
