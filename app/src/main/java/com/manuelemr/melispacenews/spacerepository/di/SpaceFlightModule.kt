@@ -30,7 +30,7 @@ val spaceFlightModule = module {
 
     single {
         Retrofit.Builder()
-            .baseUrl("https://ipinfo.io/")
+            .baseUrl("https://api.spaceflightnewsapi.net/v4/")
             .client(get<OkHttpClient>())
             .addConverterFactory(get<Json>().asConverterFactory("application/json".toMediaType()))
             .build()

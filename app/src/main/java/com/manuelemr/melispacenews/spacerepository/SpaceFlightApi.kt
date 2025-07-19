@@ -7,7 +7,9 @@ import retrofit2.http.Query
 interface SpaceFlightApi {
     @GET("articles/")
     suspend fun searchArticles(
-        @Query("search") search: String
+        @Query("offset") offset: Int = 0,
+        @Query("limit") limit: Int = 20,
+        @Query("search") search: String? = null
     ): ArticleResponse
 
     @GET("articles/{id}/")
