@@ -2,4 +2,7 @@
     <string name="app_name">MeliSpaceNews</string>
     <string name="search_space_flight_news_title">Space Flight News</string>
     <string name="search_article_image_description">An Article Image</string>
+    <string name="search_icon_description">Search icon button</string>
+    <string name="search_bar_cancel">Cancel</string>
+    <string name="search_bar_hint">Search...</string>
 </resources>
