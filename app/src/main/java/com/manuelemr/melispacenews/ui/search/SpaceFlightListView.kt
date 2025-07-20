@@ -4,7 +4,9 @@ import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,6 +23,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarDefaults.InputField
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -36,10 +42,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -56,14 +64,32 @@ fun SpaceFlightView(
     modifier: Modifier = Modifier,
     viewModel: SpaceFlightListViewModel = koinViewModel()
 ) {
+    val context = LocalContext.current
+    val focusRequester = remember { FocusRequester() }
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(true) {
-        viewModel.fetchArticles()
+    val errorState by viewModel.errorState.collectAsState()
+    LaunchedEffect(errorState) {
+        errorState?.let { error ->
+            if (error.showAsSnackbar) {
+                val result = snackbarHostState.showSnackbar(
+                    message = error.errorMessage,
+                    actionLabel = context.getString(R.string.search_retry_label),
+                    duration = if (error.isIndefinite) SnackbarDuration.Indefinite else SnackbarDuration.Short
+                )
+
+                when (result) {
+                    SnackbarResult.ActionPerformed -> viewModel.fetchArticles()
+                    SnackbarResult.Dismissed -> Unit
+                }
+            }
+        }
     }
 
-    val focusRequester = remember { FocusRequester() }
-
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(snackbarHostState)
+        },
         topBar = {
             NavBar(
                 viewModel,
@@ -75,26 +101,41 @@ fun SpaceFlightView(
         val state by viewModel.viewState.collectAsState()
 
         PullToRefreshBox(
-            modifier = modifier.padding(paddingValues),
+            modifier = modifier.padding(paddingValues).fillMaxWidth(),
             isRefreshing = state.isLoading,
             onRefresh = {
                 viewModel.fetchArticles()
             }
         ) {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                items(state.articles, key = { it }) { article ->
-                    viewModel.loadMoreIfNeeded(article)
-                    ArticleRow(
-                        modifier = modifier.animateItem(),
-                        article = article,
-                    )
+            val errorState = errorState
+            if (errorState != null && !errorState.showAsSnackbar) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ErrorStateView(
+                        title = stringResource(R.string.search_error_title),
+                        message = errorState.errorMessage,
+                        ctaTitle = stringResource(R.string.search_reload_title),
+                    ) {
+                        viewModel.fetchArticles()
+                    }
+                }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    items(state.articles, key = { it }) { article ->
+                        viewModel.loadMoreIfNeeded(article)
+                        ArticleRow(
+                            modifier = modifier.animateItem(),
+                            article = article,
+                        )
+                    }
                 }
             }
         }
-
     }
 }
 
@@ -180,5 +221,14 @@ private fun NavBar(
 private fun SpaceFlightViewPreview() {
     SpaceFlightView(
         viewModel = SpaceFlightListViewModelMock()
+    )
+}
+
+@SuppressLint("ViewModelConstructorInComposable")
+@Preview(name = "Error State")
+@Composable
+private fun SpaceFlightViewPreviewError() {
+    SpaceFlightView(
+        viewModel = SpaceFlightListViewModelError()
     )
 }

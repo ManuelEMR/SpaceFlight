@@ -5,4 +5,9 @@
     <string name="search_icon_description">Search icon button</string>
     <string name="search_bar_cancel">Cancel</string>
     <string name="search_bar_hint">Search...</string>
+    <string name="failed_to_fetch_articles">Failed to fetch articles</string>
+    <string name="failed_to_fetch_more_articles">Failed to fetch more articles</string>
+    <string name="search_retry_label">Retry</string>
+    <string name="search_error_title">Error</string>
+    <string name="search_reload_title">Reload</string>
 </resources>

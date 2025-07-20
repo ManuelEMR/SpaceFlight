@@ -3,12 +3,15 @@ package com.manuelemr.melispacenews.ui.search
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.manuelemr.melispacenews.R
 import com.manuelemr.melispacenews.spacerepository.Article
 import com.manuelemr.melispacenews.spacerepository.SpaceFlightApiStub
 import com.manuelemr.melispacenews.spacerepository.SpaceFlightRepository
 import com.manuelemr.melispacenews.spacerepository.SpaceFlightRepositoryStub
 import com.manuelemr.melispacenews.ui.utils.PagingHandler
 import com.manuelemr.melispacenews.ui.utils.PagingHandlerDelegate
+import com.manuelemr.melispacenews.ui.utils.ResourceProvider
+import com.manuelemr.melispacenews.ui.utils.TestResourceProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -30,15 +33,25 @@ data class SpaceFlightViewState(
     val isLoading: Boolean = false
 )
 
+data class ErrorViewState(
+    val errorMessage: String = "",
+    val showAsSnackbar: Boolean = false,
+    val isIndefinite: Boolean = false
+)
+
 open class SpaceFlightListViewModel(
-    private val spaceFlightRepository: SpaceFlightRepository
+    private val spaceFlightRepository: SpaceFlightRepository,
+    private val resourceProvider: ResourceProvider
 ): ViewModel(), PagingHandlerDelegate<Article> {
 
     protected val _viewState = MutableStateFlow(SpaceFlightViewState())
     val viewState: StateFlow<SpaceFlightViewState> = _viewState
 
+    protected val _errorState = MutableStateFlow<ErrorViewState?>(null)
+    val errorState: StateFlow<ErrorViewState?> = _errorState
+
     private var hasMoreItems = true
-    private val pager = PagingHandler(this)
+    private val pager = PagingHandler(this, initialPage = 0)
     private var pagingJob: Job? = null
 
     init {
@@ -61,18 +74,8 @@ open class SpaceFlightListViewModel(
     }
 
     fun fetchArticles() {
-        viewModelScope.launch {
-            try {
-                _viewState.value = _viewState.value.copy(isLoading = true)
-                val articles = spaceFlightRepository.searchArticles(page = 0, search = _viewState.value.searchQuery)
-
-                _viewState.value = _viewState.value.copy(articles = articles)
-            } catch (e: Exception) {
-                Log.e("SpaceFlightListViewModel", "Error fetching articles", e)
-            } finally {
-                _viewState.value = _viewState.value.copy(isLoading = false)
-            }
-        }
+        _errorState.value = null
+        pager.invalidate()
     }
 
     fun onSearchQueryChanged(query: String) {
@@ -97,6 +100,8 @@ open class SpaceFlightListViewModel(
         page: Int,
         onResult: (List<Article>) -> Unit
     ) {
+        _errorState.value = null
+
         pagingJob?.cancel()
         pagingJob = viewModelScope.launch {
             try {
@@ -105,6 +110,11 @@ open class SpaceFlightListViewModel(
             } catch (e: Exception) {
                 if (e !is CancellationException) {
                     Log.e("SpaceFlightListViewModel", "Error fetching articles", e)
+                    _errorState.value = ErrorViewState(
+                        errorMessage = resourceProvider.getString(if (page == 0) R.string.failed_to_fetch_articles else R.string.failed_to_fetch_more_articles),
+                        showAsSnackbar = page > 0,
+                        isIndefinite = true
+                    )
                 }
             } finally {
                 _viewState.value = _viewState.value.copy(isLoading = false)
@@ -127,10 +137,22 @@ open class SpaceFlightListViewModel(
     // endregion
 }
 
-
-
-class SpaceFlightListViewModelMock: SpaceFlightListViewModel(SpaceFlightRepositoryStub()) {
+class SpaceFlightListViewModelMock: SpaceFlightListViewModel(
+    SpaceFlightRepositoryStub(), TestResourceProvider()
+) {
     init {
         _viewState.value = SpaceFlightViewState(articles = SpaceFlightApiStub.testArticles)
+    }
+}
+
+class SpaceFlightListViewModelError: SpaceFlightListViewModel(
+    SpaceFlightRepositoryStub(), TestResourceProvider()
+) {
+    init {
+        _errorState.value = ErrorViewState(
+            errorMessage = "This is a test error message.",
+            showAsSnackbar = false,
+            isIndefinite = true
+        )
     }
 }

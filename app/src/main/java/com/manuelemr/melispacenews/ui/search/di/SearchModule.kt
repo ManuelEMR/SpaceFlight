@@ -7,7 +7,8 @@ import org.koin.dsl.module
 val searchModule = module {
     viewModel {
         SpaceFlightListViewModel(
-            spaceFlightRepository = get()
+            spaceFlightRepository = get(),
+            resourceProvider = get()
         )
     }
 }

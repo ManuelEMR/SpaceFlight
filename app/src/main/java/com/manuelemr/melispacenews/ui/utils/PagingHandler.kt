@@ -9,8 +9,11 @@ interface PagingHandlerDelegate<T> {
     fun onInvalidate()
 }
 
-class PagingHandler<T>(private var delegate: PagingHandlerDelegate<T>) {
-    var page = 0
+class PagingHandler<T>(
+    private var delegate: PagingHandlerDelegate<T>,
+    private val initialPage: Int = 1,
+) {
+    var page: Int
         private set
 
     private var isLoading = false
@@ -19,10 +22,15 @@ class PagingHandler<T>(private var delegate: PagingHandlerDelegate<T>) {
     var items: List<T> = emptyList()
         private set
 
+    init {
+        page = initialPage - 1
+        println("Page $page")
+    }
+
     fun fetchNextPage() {
         if (isLoading) return
         if (!hasMoreItems) {
-            delegate.onNoMoreItems(hasMoreItems)
+            delegate.onNoMoreItems(false)
             return
         }
 
@@ -34,7 +42,7 @@ class PagingHandler<T>(private var delegate: PagingHandlerDelegate<T>) {
 
             if (newItems.isEmpty()) {
                 hasMoreItems = false
-                delegate.onNoMoreItems(hasMoreItems)
+                delegate.onNoMoreItems(false)
                 Log.d("Pager", "No more items ${newItems.count()}")
             }
 
@@ -45,7 +53,7 @@ class PagingHandler<T>(private var delegate: PagingHandlerDelegate<T>) {
     fun invalidate() {
         hasMoreItems = true
         isLoading = false
-        page = 0
+        page = initialPage - 1
         items = emptyList()
 
         delegate.onInvalidate()
