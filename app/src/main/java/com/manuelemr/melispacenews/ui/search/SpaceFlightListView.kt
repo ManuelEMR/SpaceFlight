@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -25,6 +27,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,11 +37,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.manuelemr.melispacenews.R
@@ -55,81 +61,116 @@ fun SpaceFlightView(
         viewModel.fetchArticles()
     }
 
-    var isSearchBarActive by rememberSaveable { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    AnimatedContent(isSearchBarActive) { value ->
-                        if (value) {
-                            TextField(
-                                modifier = Modifier.fillMaxWidth()
-                                    .border(1.dp, Color.Gray, RoundedCornerShape(50.dp)),
-                                value = "",
-                                onValueChange = {
-//                                viewModel.onSearchQueryChanged(it)
-                                },
-                                placeholder = {
-                                    Text(
-                                        text = stringResource(R.string.search_bar_hint),
-                                        color = Color.Gray
-                                    )
-                                },
-                                shape = RoundedCornerShape(50.dp),
-                                colors = TextFieldDefaults.colors().copy(
-                                    unfocusedContainerColor = Color.Transparent,
-                                    focusedContainerColor = Color.Transparent,
-                                    focusedIndicatorColor = Color.Transparent,
-                                    unfocusedIndicatorColor = Color.Transparent,
-                                )
-                            )
-                        } else {
-                            Text(stringResource(R.string.search_space_flight_news_title))
-                        }
-                    }
-
-                },
-                actions = {
-                    AnimatedContent(isSearchBarActive) { value ->
-                        if (value) {
-                            TextButton(onClick = {
-                                isSearchBarActive = isSearchBarActive.not()
-                            }) {
-                                Text(
-                                    text = stringResource(R.string.search_bar_cancel),
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        } else {
-                            IconButton(onClick = {
-                                isSearchBarActive = isSearchBarActive.not()
-                            }) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_search),
-                                    contentDescription = stringResource(R.string.search_icon_description),
-                                )
-                            }
-                        }
-                    }
-                }
+            NavBar(
+                viewModel,
+                focusRequester
             )
         }
     ) { paddingValues ->
+
         val state by viewModel.viewState.collectAsState()
 
-        LazyColumn(
+        PullToRefreshBox(
             modifier = modifier.padding(paddingValues),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            isRefreshing = state.isLoading,
+            onRefresh = {
+                viewModel.fetchArticles()
+            }
         ) {
-            items(state.articles, key = { it }) { article ->
-                ArticleRow(
-                    article = article,
-                )
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                items(state.articles, key = { it }) { article ->
+                    ArticleRow(
+                        modifier = modifier.animateItem(),
+                        article = article,
+                    )
+                }
             }
         }
+
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NavBar(
+    viewModel: SpaceFlightListViewModel,
+    focusRequester: FocusRequester
+) {
+    var isSearchBarActive by rememberSaveable { mutableStateOf(false) }
+    val viewState by viewModel.viewState.collectAsState()
+
+    TopAppBar(
+        title = {
+            AnimatedContent(isSearchBarActive) { value ->
+
+                LaunchedEffect(value) {
+                    if (value) {
+                        focusRequester.requestFocus()
+                    }
+                }
+
+                if (value) {
+                    TextField(
+                        modifier = Modifier.fillMaxWidth()
+                            .border(1.dp, Color.Gray, RoundedCornerShape(50.dp))
+                            .focusRequester(focusRequester),
+                        value = viewState.searchQuery,
+                        onValueChange = {
+                            viewModel.onSearchQueryChanged(it)
+                        },
+                        placeholder = {
+                            Text(
+                                text = stringResource(R.string.search_bar_hint),
+                                color = Color.Gray
+                            )
+                        },
+                        shape = RoundedCornerShape(50.dp),
+                        colors = TextFieldDefaults.colors().copy(
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                        ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    )
+                } else {
+                    Text(stringResource(R.string.search_space_flight_news_title))
+                }
+            }
+
+        },
+        actions = {
+            AnimatedContent(isSearchBarActive) { value ->
+                if (value) {
+                    TextButton(onClick = {
+                        isSearchBarActive = isSearchBarActive.not()
+                        viewModel.onSearchQueryChanged("")
+                    }) {
+                        Text(
+                            text = stringResource(R.string.search_bar_cancel),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                } else {
+                    IconButton(onClick = {
+                        isSearchBarActive = isSearchBarActive.not()
+                    }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_search),
+                            contentDescription = stringResource(R.string.search_icon_description),
+                        )
+                    }
+                }
+            }
+        }
+    )
 }
 
 @SuppressLint("ViewModelConstructorInComposable")
