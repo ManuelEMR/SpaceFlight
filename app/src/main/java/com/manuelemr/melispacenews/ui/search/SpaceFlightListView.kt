@@ -86,6 +86,7 @@ fun SpaceFlightView(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 items(state.articles, key = { it }) { article ->
+                    viewModel.loadMoreIfNeeded(article)
                     ArticleRow(
                         modifier = modifier.animateItem(),
                         article = article,

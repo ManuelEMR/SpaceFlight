@@ -6,7 +6,7 @@ open class SpaceFlightRepository(protected val api: SpaceFlightApi) {
     open suspend fun searchArticles(search: String? = null, page: Int = 0): List<Article> {
         return api.searchArticles(
             offset = page * pageSize,
-            search = search
+            search = search?.ifEmpty { null }
         ).results
     }
 
