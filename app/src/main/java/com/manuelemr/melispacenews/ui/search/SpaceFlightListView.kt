@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -216,62 +218,119 @@ private fun Body(
         ) {
             val errorState = errorState
             if (errorState != null && !errorState.showAsSnackbar) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    ErrorStateView(
-                        title = stringResource(R.string.search_error_title),
-                        message = errorState.errorMessage,
-                        ctaTitle = stringResource(R.string.search_reload_title),
-                    ) {
+                ErrorSection(
+                    errorState = errorState,
+                    onRetry = {
                         viewModel.fetchArticles()
                     }
-                }
+                )
             } else {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    items(state.articles, key = { it }) { article ->
-                        viewModel.loadMoreIfNeeded(article)
-                        AnimatedVisibility(
-                            modifier = Modifier.animateItem(),
-                            visible = selectedArticle != article,
-                            enter = fadeIn() + scaleIn(),
-                            exit = fadeOut() + scaleOut()
-                        ) {
-                            Box(
-                                modifier = Modifier.sharedBounds(
-                                    sharedContentState = rememberSharedContentState(key = "${article.id}-bounds"),
-                                    animatedVisibilityScope = this,
-                                    resizeMode = SharedTransitionScope.ResizeMode.ScaleToBounds(),
-                                    clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(15.dp))
-                                ),
-                            ) {
-                                ArticleRow(
-                                    modifier = Modifier
-                                        .clickable { selectedArticle = article }
-                                        .sharedElement(
-                                            sharedContentState = rememberSharedContentState(key = "${article.id}"),
-                                            animatedVisibilityScope = this@AnimatedVisibility
-                                        ),
-                                    article = article,
-                                )
-                            }
+                    items(state.articles, key = { it.id }) { article ->
+                        LaunchedEffect(article.id) {
+                            viewModel.loadMoreIfNeeded(article)
                         }
+
+                        AnimatedArticleRow(
+                            listScope = this,
+                            sharedTransitionScope = this@SharedTransitionLayout,
+                            isVisible = selectedArticle != article,
+                            article = article,
+                            onArticleClick = {
+                                selectedArticle = it
+                            }
+                        )
                     }
                 }
             }
         }
 
+        AnimatedArticleDetail(
+            article = selectedArticle,
+            sharedTransitionScope = this@SharedTransitionLayout,
+            onArticleClick = {
+                selectedArticle = null
+            }
+        )
+    }
+}
+
+@Composable
+private fun ErrorSection(
+    errorState: ErrorViewState,
+    onRetry: () -> Unit
+) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        ErrorStateView(
+            title = stringResource(R.string.search_error_title),
+            message = errorState.errorMessage,
+            ctaTitle = stringResource(R.string.search_reload_title),
+            onCtaClick = onRetry
+        )
+    }
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun AnimatedArticleRow(
+    listScope: LazyItemScope,
+    sharedTransitionScope: SharedTransitionScope,
+    isVisible: Boolean,
+    article: Article,
+    onArticleClick: (Article) -> Unit,
+) {
+    with(sharedTransitionScope) {
+        with(listScope) {
+            AnimatedVisibility(
+                modifier = Modifier.animateItem(),
+                visible = isVisible,
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut()
+            ) {
+                Box(
+                    modifier = Modifier.sharedBounds(
+                        sharedContentState = rememberSharedContentState(key = "${article.id}-bounds"),
+                        animatedVisibilityScope = this,
+                        resizeMode = SharedTransitionScope.ResizeMode.ScaleToBounds(),
+                        clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(15.dp))
+                    ),
+                ) {
+                    ArticleRow(
+                        modifier = Modifier
+                            .clickable { onArticleClick(article) }
+                            .sharedElement(
+                                sharedContentState = rememberSharedContentState(key = "${article.id}"),
+                                animatedVisibilityScope = this@AnimatedVisibility
+                            ),
+                        article = article,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun AnimatedArticleDetail(
+    article: Article?,
+    sharedTransitionScope: SharedTransitionScope,
+    onArticleClick: () -> Unit
+) {
+    with(sharedTransitionScope) {
         AnimatedContent(
-            selectedArticle
+            article
         ) { state ->
             state?.let {
                 Box(
                     modifier = Modifier.fillMaxSize()
-                        .clickable { selectedArticle = null }
+                        .clickable { onArticleClick() }
                         .background(Color.Black.copy(alpha = 0.2f))
                         .sharedBounds(
                             sharedContentState = rememberSharedContentState(key = "${it.id}-bounds"),
@@ -283,7 +342,7 @@ private fun Body(
                 ) {
                     ArticleDetail(
                         modifier = Modifier
-                            .clickable { selectedArticle = null }
+                            .clickable { onArticleClick() }
                             .sharedElement(
                                 rememberSharedContentState(key = "${it.id}"),
                                 animatedVisibilityScope = this@AnimatedContent
@@ -294,6 +353,7 @@ private fun Body(
             }
         }
     }
+
 }
 
 @SuppressLint("ViewModelConstructorInComposable")
