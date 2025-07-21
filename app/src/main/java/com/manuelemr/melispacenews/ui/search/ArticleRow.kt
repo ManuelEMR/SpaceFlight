@@ -93,7 +93,7 @@ fun ArticleRow(
                     text = it,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onPrimary,
-                    maxLines = 5,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
             }

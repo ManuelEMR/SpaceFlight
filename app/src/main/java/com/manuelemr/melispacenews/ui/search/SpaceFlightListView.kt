@@ -2,7 +2,18 @@ package com.manuelemr.melispacenews.ui.search
 
 import android.annotation.SuppressLint
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -44,6 +55,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -56,9 +68,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.manuelemr.melispacenews.R
+import com.manuelemr.melispacenews.spacerepository.Article
+import com.manuelemr.melispacenews.ui.articledetail.ArticleDetail
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpaceFlightView(
     modifier: Modifier = Modifier,
@@ -97,45 +110,10 @@ fun SpaceFlightView(
             )
         }
     ) { paddingValues ->
-
-        val state by viewModel.viewState.collectAsState()
-
-        PullToRefreshBox(
-            modifier = modifier.padding(paddingValues).fillMaxWidth(),
-            isRefreshing = state.isLoading,
-            onRefresh = {
-                viewModel.fetchArticles()
-            }
-        ) {
-            val errorState = errorState
-            if (errorState != null && !errorState.showAsSnackbar) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    ErrorStateView(
-                        title = stringResource(R.string.search_error_title),
-                        message = errorState.errorMessage,
-                        ctaTitle = stringResource(R.string.search_reload_title),
-                    ) {
-                        viewModel.fetchArticles()
-                    }
-                }
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    items(state.articles, key = { it }) { article ->
-                        viewModel.loadMoreIfNeeded(article)
-                        ArticleRow(
-                            modifier = modifier.animateItem(),
-                            article = article,
-                        )
-                    }
-                }
-            }
-        }
+        Body(
+            modifier = modifier.padding(paddingValues),
+            viewModel = viewModel
+        )
     }
 }
 
@@ -213,6 +191,109 @@ private fun NavBar(
             }
         }
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
+@Composable
+private fun Body(
+    modifier: Modifier = Modifier,
+    viewModel: SpaceFlightListViewModel,
+) {
+
+    val state by viewModel.viewState.collectAsState()
+    val errorState by viewModel.errorState.collectAsState()
+
+    var selectedArticle by remember { mutableStateOf<Article?>(null) }
+    SharedTransitionLayout(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        PullToRefreshBox(
+            modifier = modifier.fillMaxWidth(),
+            isRefreshing = state.isLoading,
+            onRefresh = {
+                viewModel.fetchArticles()
+            }
+        ) {
+            val errorState = errorState
+            if (errorState != null && !errorState.showAsSnackbar) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ErrorStateView(
+                        title = stringResource(R.string.search_error_title),
+                        message = errorState.errorMessage,
+                        ctaTitle = stringResource(R.string.search_reload_title),
+                    ) {
+                        viewModel.fetchArticles()
+                    }
+                }
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    items(state.articles, key = { it }) { article ->
+                        viewModel.loadMoreIfNeeded(article)
+                        AnimatedVisibility(
+                            modifier = Modifier.animateItem(),
+                            visible = selectedArticle != article,
+                            enter = fadeIn() + scaleIn(),
+                            exit = fadeOut() + scaleOut()
+                        ) {
+                            Box(
+                                modifier = Modifier.sharedBounds(
+                                    sharedContentState = rememberSharedContentState(key = "${article.id}-bounds"),
+                                    animatedVisibilityScope = this,
+                                    resizeMode = SharedTransitionScope.ResizeMode.ScaleToBounds(),
+                                    clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(15.dp))
+                                ),
+                            ) {
+                                ArticleRow(
+                                    modifier = Modifier
+                                        .clickable { selectedArticle = article }
+                                        .sharedElement(
+                                            sharedContentState = rememberSharedContentState(key = "${article.id}"),
+                                            animatedVisibilityScope = this@AnimatedVisibility
+                                        ),
+                                    article = article,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        AnimatedContent(
+            selectedArticle
+        ) { state ->
+            state?.let {
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                        .clickable { selectedArticle = null }
+                        .background(Color.Black.copy(alpha = 0.2f))
+                        .sharedBounds(
+                            sharedContentState = rememberSharedContentState(key = "${it.id}-bounds"),
+                            animatedVisibilityScope = this,
+                            resizeMode = SharedTransitionScope.ResizeMode.ScaleToBounds(),
+                            clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(15.dp))
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    ArticleDetail(
+                        modifier = Modifier
+                            .clickable { selectedArticle = null }
+                            .sharedElement(
+                                rememberSharedContentState(key = "${it.id}"),
+                                animatedVisibilityScope = this@AnimatedContent
+                            ),
+                        article = it,
+                    )
+                }
+            }
+        }
+    }
 }
 
 @SuppressLint("ViewModelConstructorInComposable")
