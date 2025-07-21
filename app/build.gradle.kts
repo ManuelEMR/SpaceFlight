@@ -39,6 +39,10 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -65,6 +69,10 @@ dependencies {
     implementation(libs.coil.network)
 
     testImplementation(libs.junit)
+    testImplementation(libs.androidx.core.testing)
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+    testImplementation("io.mockk:mockk:1.13.8")
+
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

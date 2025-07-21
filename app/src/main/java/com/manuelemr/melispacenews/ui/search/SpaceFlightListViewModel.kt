@@ -1,6 +1,7 @@
 package com.manuelemr.melispacenews.ui.search
 
 import android.util.Log
+import androidx.annotation.VisibleForTesting
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.manuelemr.melispacenews.R
@@ -71,6 +72,16 @@ open class SpaceFlightListViewModel(
                     pager.invalidate()
                 }
         }
+    }
+
+    @VisibleForTesting
+    fun setErrorState(state: ErrorViewState) {
+        _errorState.value = state
+    }
+
+    @VisibleForTesting
+    fun setViewState(state: SpaceFlightViewState) {
+        _viewState.value = state
     }
 
     fun fetchArticles() {
