@@ -331,13 +331,13 @@ private fun AnimatedArticleDetail(
                 Box(
                     modifier = Modifier.fillMaxSize()
                         .clickable { onArticleClick() }
-                        .background(Color.Black.copy(alpha = 0.2f))
                         .sharedBounds(
                             sharedContentState = rememberSharedContentState(key = "${it.id}-bounds"),
                             animatedVisibilityScope = this,
                             resizeMode = SharedTransitionScope.ResizeMode.ScaleToBounds(),
                             clipInOverlayDuringTransition = OverlayClip(RoundedCornerShape(15.dp))
-                        ),
+                        )
+                        .background(Color.Black.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center,
                 ) {
                     ArticleDetail(
